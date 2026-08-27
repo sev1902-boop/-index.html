@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rosemary's Lookbook Trainer</title>
+<style>
+:root{--bg:#f4f0e8;--card:#fff;--ink:#1f1f1f;--muted:#777;--accent:#7b3f28;--good:#27733b;--bad:#b63838;--soft:#ece7dd}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.app{max-width:760px;margin:auto;min-height:100vh;padding:18px 16px 35px}.top{text-align:center}.top h1{margin:4px 0;font-size:30px}.top p{margin:0 0 15px;color:var(--muted)}
+.card{background:var(--card);border-radius:20px;padding:20px;box-shadow:0 4px 18px #0001;margin:14px 0}
+.menu{display:grid;gap:10px}.btn{border:0;border-radius:13px;padding:14px 16px;font-size:16px;font-weight:650;cursor:pointer;background:var(--ink);color:white}.btn.secondary{background:var(--soft);color:var(--ink)}.btn.accent{background:var(--accent)}
+.hidden{display:none!important}.row{display:flex;gap:9px;align-items:center}.row>*{flex:1}.stats{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}.bar{height:8px;background:#ddd;border-radius:9px;overflow:hidden;margin:12px 0 20px}.bar>div{height:100%;background:var(--accent);width:0}
+.q{font-size:22px;font-weight:750;line-height:1.3;margin:18px 0}.answers{display:grid;gap:9px}.answer{text-align:left;background:var(--soft);color:var(--ink);min-height:52px}.answer.correct{background:#cce9d2;color:#174b25}.answer.wrong{background:#f2cccc;color:#6b1717}.answer:disabled{opacity:1}
+.feedback{min-height:28px;font-weight:700;margin:14px 0}.tiny{font-size:13px;color:var(--muted)}.pill{display:inline-block;background:var(--soft);padding:5px 9px;border-radius:999px;font-size:13px;margin:3px 2px}
+.studyGrid{display:grid;gap:12px}.drink{border:1px solid #ddd;border-radius:15px;padding:15px}.drink h3{margin:0 0 7px}.drink p{margin:6px 0;line-height:1.45}
+.matchGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.matchBtn{min-height:70px;background:var(--soft);color:var(--ink);font-size:14px}.matchBtn.selected{outline:3px solid var(--accent)}.matchBtn.matched{background:#cce9d2;color:#174b25}.matchBtn.wrong{animation:shake .25s}@keyframes shake{25%{transform:translateX(5px)}50%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.timer{text-align:center;font-size:25px;font-weight:800}.grade{text-align:center;font-size:38px;font-weight:900}
+@media(min-width:650px){.matchGrid{grid-template-columns:1fr 1fr 1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top"><h1>🍷 Rosemary's Lookbook Trainer</h1><p>Advanced practice • wines • beer • cider</p></header>
+
+<section id="home" class="card">
+<h2>Choose your practice</h2>
+<div class="menu">
+<button class="btn accent" onclick="startExam()">🔥 10-Question Exam</button>
+<button class="btn" onclick="startQuiz('notes')">👃 Guess From Tasting Notes</button>
+<button class="btn" onclick="startQuiz('varietal')">🍇 Match the Varietal</button>
+<button class="btn" onclick="startQuiz('price')">💵 Price Challenge</button>
+<button class="btn" onclick="startMatching()">🧩 Matching Game</button>
+<button class="btn secondary" onclick="showStudy()">📚 Study Cards</button>
+</div>
+</section>
+
+<section id="game" class="card hidden">
+<div class="stats"><span id="modeLabel"></span><span id="scoreLabel">Score 0</span></div>
+<div class="bar"><div id="progress"></div></div>
+<div id="timer" class="timer hidden"></div>
+<div id="question" class="q"></div>
+<div id="answers" class="answers"></div>
+<div id="feedback" class="feedback"></div>
+<div class="row"><button id="next" class="btn accent hidden" onclick="nextQuestion()">Next →</button><button class="btn secondary" onclick="home()">Menu</button></div>
+</section>
+
+<section id="match" class="card hidden">
+<div class="stats"><span>🧩 Matching Game</span><span id="matchScore">Pairs: 0 / 6</span></div>
+<p class="tiny">Tap a drink, then tap its matching clue. Match all 6.</p>
+<div id="matchGrid" class="matchGrid"></div>
+<div id="matchFeedback" class="feedback"></div>
+<button class="btn accent" onclick="startMatching()">New Board</button>
+<button class="btn secondary" onclick="home()">Menu</button>
+</section>
+
+<section id="study" class="card hidden">
+<h2>📚 Study Cards</h2>
+<div id="studyContent" class="studyGrid"></div>
+<button class="btn secondary" onclick="home()">← Menu</button>
+</section>
+
+<section id="result" class="card hidden">
+<div class="grade" id="grade"></div>
+<h2 id="resultTitle" style="text-align:center"></h2>
+<p id="resultText" style="text-align:center;line-height:1.5"></p>
+<button class="btn accent" onclick="startExam()">Try Exam Again</button>
+<button class="btn secondary" onclick="home()">Menu</button>
+</section>
+</div>
+
+<script>
+const D=[
+{name:"Franciacorta, Ca' del Bosco, Cuvée Prestige",type:"Sparkling Wine",price:"$18 / $31 / $72",varietal:"Pinot Nero, Chardonnay, Pinot Bianco",notes:"Green apple, pear, brioche, lemon, almond, honey",liner:"Elegant, toasted brioche, Meyer lemon",pairing:"Orecchiette; Rosemary's focaccia; tiramisu"},
+{name:"Lambrusco, La Battagliola, Grasparossa di Castelvetro Brut",type:"Sparkling Red",price:"$14 / $23 / $56",varietal:"Lambrusco Grasparossa",notes:"Concord grape, pomegranate, blackberry jam, cola, sour cherry",liner:"Red fruited and bright, a juicy sparkling red",pairing:"Soppressata; eggplant"},
+{name:"Prosecco, Col Dorato, Rai Di San Polo Di Piave",type:"Sparkling Wine",price:"$15 / $25 / $60",varietal:"100% Glera",notes:"Fresh sparkling Italian white",liner:"Fresh, sparkling Italian white",pairing:"General sparkling-wine pairing"},
+{name:"Trebbiano d'Abruzzo, Tiberio",type:"White Wine",price:"$16 / $28 / $64",varietal:"Trebbiano Abruzzese",notes:"Apricot, grapefruit, jasmine, orange blossoms, anise, green apple, almond",liner:"Bright stone fruit and white flowers; summer in a glass",pairing:"Salmon; lean fish; pasta"},
+{name:"Sauvignon Blanc, Scarbolo",type:"White Wine",price:"$18 / $31 / $72",varietal:"100% Sauvignon Blanc",notes:"Peach, tropical fruit, tomato leaves, creamy texture, tropical-fruit finish",liner:"Classic, crisp, mineral Sauvignon Blanc from a cool climate",pairing:"Formaggi misti; Lani's Market Greens"},
+{name:"Chardonnay, Terra Alpina",type:"White Wine",price:"$16 / $28 / $64",varietal:"100% Chardonnay",notes:"White flowers and orchard fruits; fresh and crisp",liner:"Crisp, crowd-pleaser Chardonnay",pairing:"Affettati misti; Branzino; seafood; chicken"},
+{name:"Pinot Grigio, I Vini Di Jacopo",type:"White Wine",price:"$16 / $28 / $64",varietal:"Pinot Grigio",notes:"Green apple, green pear, lime zest, creamy finish",liner:"Light and refreshing, lifted and easy to drink",pairing:"Chitarra alla carbonara; Parmesan potatoes; cheese"},
+{name:"Soave, Nardello, Meridies",type:"White Wine",price:"$14 / $23 / $56",varietal:"Garganega",notes:"Lemon, citrus, peach, delicate white flowers",liner:"Perfumed and unctuous, jasmine and citrus",pairing:"Branzino; olives"},
+{name:"Rosemary's Bianco, Alois, Falanghina",type:"White Wine",price:"$15 / $25 / $60",varietal:"Falanghina",notes:"Grapefruit, Meyer lemon, green apple, mineral, mild salinity, almond",liner:"Rounder with apples and great minerality",pairing:"Branzino; lemon linguine; Romanesco; Parmigiano Reggiano"},
+{name:"Verdicchio, La Staffa, Castello Di Jesi Superiore",type:"White Wine",price:"$14 / $23 / $56",varietal:"Verdicchio",notes:"Lemon zest, citrus, peach, lime zest, toasted almonds",liner:"Savory, nutty, bright salinity and acid, peach",pairing:"Lean fish; pasta; fried food; verdure"},
+{name:"Dolomiti Pilsner",type:"Beer",price:"$9",varietal:"Lager / Pilsner",notes:"Golden reflections, full and balanced taste, fine persistent foam",liner:"Light, golden, balanced lager",pairing:"General beer pairing"},
+{name:"Forstlager",type:"Beer",price:"$9",varietal:"Lager",notes:"Balanced hops and malt, fragrant aroma, persistent head",liner:"Session beer; ideal with meals",pairing:"Meals"},
+{name:"Athletic Brewing Upside Dawn",type:"Non-Alcoholic Beer",price:"$8",varietal:"Non-alcoholic lager",notes:"Clean and crisp; biscuity malt, citrus, herbal hops",liner:"Clean and crisp non-alcoholic lager",pairing:"General beer pairing"},
+{name:"Bronx Brewery Well-Earned Pilsner",type:"Beer",price:"$12",varietal:"Pilsner",notes:"Copper-brown; pine and spice; balanced malt; piney-spicy hops",liner:"Malty, piney, spicy pilsner",pairing:"General beer pairing"},
+{name:"Hudson North Cider",type:"Cider",price:"$8",varietal:"Cider",notes:"Crisp, full-bodied; like small-batch cider from a local farm stand",liner:"Crisp, full-bodied farm-stand-style cider",pairing:"General cider pairing"}
+];
+
+let mode="",deck=[],qi=0,score=0,answered=false,timer=null,timeLeft=0;
+
+function hideAll(){["home","game","match","study","result"].forEach(id=>document.getElementById(id).classList.add("hidden"))}
+function home(){if(timer)clearInterval(timer);hideAll();document.getElementById("home").classList.remove("hidden")}
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+function pick4(correct,field){let vals=[...new Set(D.map(x=>x[field]).filter(Boolean))].filter(x=>x!==correct);return shuffle([correct,...shuffle(vals).slice(0,3)])}
+
+function startQuiz(m){
+ if(timer)clearInterval(timer);mode=m;deck=shuffle(D);qi=0;score=0;hideAll();document.getElementById("game").classList.remove("hidden");document.getElementById("timer").classList.add("hidden");showQ();
+}
+function startExam(){
+ if(timer)clearInterval(timer);mode="exam";deck=shuffle(D).slice(0,10);qi=0;score=0;hideAll();document.getElementById("game").classList.remove("hidden");document.getElementById("timer").classList.remove("hidden");showQ();startTimer();
+}
+function startTimer(){
+ timeLeft=90;updateTimer();timer=setInterval(()=>{timeLeft--;updateTimer();if(timeLeft<=0){clearInterval(timer);finishExam()}},1000)
+}
+function updateTimer(){document.getElementById("timer").textContent="⏱ "+timeLeft+" sec"}
+function showQ(){
+ answered=false;let d=deck[qi],q="",field="name",correct="";
+ document.getElementById("next").classList.add("hidden");document.getElementById("feedback").textContent="";
+ document.getElementById("scoreLabel").textContent="Score "+score;
+ document.getElementById("progress").style.width=(qi/deck.length*100)+"%";
+ document.getElementById("modeLabel").textContent=mode==="exam"?"🔥 10-Question Exam":mode==="notes"?"👃 Tasting Notes":mode==="varietal"?"🍇 Varietal":"💵 Price";
+ if(mode==="notes"||mode==="exam"){q=`Which drink matches these clues?<br><br><em>“${d.notes}”</em>`;field="name";correct=d.name}
+ if(mode==="varietal"){q=`What is the varietal / style of <b>${d.name}</b>?`;field="varietal";correct=d.varietal}
+ if(mode==="price"){q=`What is the listed price for <b>${d.name}</b>?`;field="price";correct=d.price}
+ document.getElementById("question").innerHTML=q;
+ let ans=pick4(correct,field),box=document.getElementById("answers");box.innerHTML="";
+ ans.forEach(a=>{let b=document.createElement("button");b.className="btn answer";b.textContent=a;b.onclick=()=>check(b,a,correct);box.appendChild(b)})
+}
+function check(btn,chosen,correct){
+ if(answered)return;answered=true;if(chosen===correct){score++;btn.classList.add("correct");document.getElementById("feedback").textContent="✅ Correct!"}else{btn.classList.add("wrong");document.getElementById("feedback").textContent="❌ Correct answer: "+correct}
+ document.querySelectorAll(".answer").forEach(b=>{b.disabled=true;if(b.textContent===correct)b.classList.add("correct")});
+ document.getElementById("scoreLabel").textContent="Score "+score;document.getElementById("next").classList.remove("hidden")
+}
+function nextQuestion(){qi++;if(qi>=deck.length){if(mode==="exam")finishExam();else finishQuiz()}else showQ()}
+function finishQuiz(){document.getElementById("question").innerHTML=`Finished! You scored <b>${score}/${deck.length}</b>.`;document.getElementById("answers").innerHTML="";document.getElementById("next").classList.add("hidden");document.getElementById("feedback").textContent=score/deck.length>=.8?"🔥 Great work!":"📚 Review the study cards and try again."}
+function finishExam(){if(timer)clearInterval(timer);document.getElementById("game").classList.add("hidden");document.getElementById("result").classList.remove("hidden");let pct=Math.round(score/deck.length*100),g=pct>=90?"A":pct>=80?"B":pct>=70?"C":pct>=60?"D":"F";document.getElementById("grade").textContent=g;document.getElementById("resultTitle").textContent=`${score}/${deck.length} correct (${pct}%)`;document.getElementById("resultText").textContent=pct>=90?"Excellent — you're ready to be tested.":pct>=70?"Good foundation — focus on the ones you missed.":"Keep studying the cards, then retake the exam."}
+
+function showStudy(){hideAll();document.getElementById("study").classList.remove("hidden");let box=document.getElementById("studyContent");box.innerHTML="";D.forEach((d,i)=>{let el=document.createElement("div");el.className="drink";el.innerHTML=`<h3>${i+1}. ${d.name}</h3><span class="pill">${d.type}</span><p><b>Price:</b> ${d.price}</p><p><b>Varietal / Style:</b> ${d.varietal}</p><p><b>Tasting Notes:</b> ${d.notes}</p><p><b>One-liner:</b> ${d.liner}</p><p><b>Pairing:</b> ${d.pairing}</p>`;box.appendChild(el)})}
+
+let matchPairs=[],selected=null,matched=0;
+function startMatching(){
+ hideAll();document.getElementById("match").classList.remove("hidden");matched=0;selected=null;
+ let chosen=shuffle(D).slice(0,6);matchPairs=[];
+ chosen.forEach((d,i)=>{matchPairs.push({id:i,type:"drink",text:d.name,drink:d});matchPairs.push({id:i,type:"clue",text:d.varietal+" • "+d.liner,drink:d})});
+ matchPairs=shuffle(matchPairs);renderMatch();
+}
+function renderMatch(){
+ document.getElementById("matchScore").textContent=`Pairs: ${matched} / 6`;let box=document.getElementById("matchGrid");box.innerHTML="";
+ matchPairs.forEach((p,i)=>{let b=document.createElement("button");b.className="btn matchBtn";b.textContent=p.text;b.dataset.i=i;b.onclick=()=>selectMatch(b,p);box.appendChild(b)})
+}
+function selectMatch(btn,p){
+ if(btn.classList.contains("matched"))return;
+ if(!selected){selected={btn,p};btn.classList.add("selected");return}
+ if(selected.btn===btn)return;
+ if(selected.p.id===p.id && selected.p.type!==p.type){
+   selected.btn.classList.remove("selected");selected.btn.classList.add("matched");btn.classList.add("matched");matched++;selected=null;document.getElementById("matchFeedback").textContent="✅ Match!";
+   if(matched===6)document.getElementById("matchFeedback").textContent="🏆 Perfect! You matched all 6.";
+ }else{
+   btn.classList.add("wrong");selected.btn.classList.add("wrong");let old=selected.btn;selected=null;setTimeout(()=>{btn.classList.remove("wrong");old.classList.remove("wrong","selected")},450);document.getElementById("matchFeedback").textContent="Try again — those don't match."
+ }
+}
+</script>
+</body>
+</html>
